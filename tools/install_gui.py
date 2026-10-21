@@ -3,14 +3,20 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 import subprocess
 import re
+import json
+from pathlib import Path
 
-CONFIG_PATH = "./config.txt"  # 可选配置文件
+CONFIG_PATH = Path(__file__).resolve().parents[1] / "web" / "config.txt"
 
 def get_chrome_version(chrome_path):
     try:
+        environment = dict(os.environ, CSDN_CHROME_PATH=chrome_path)
         output = subprocess.check_output(
-            f'"{chrome_path}" --version', shell=True, stderr=subprocess.STDOUT
-        ).decode("utf-8")
+            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
+             "(Get-Item -LiteralPath $env:CSDN_CHROME_PATH).VersionInfo.ProductVersion"],
+            env=environment, stderr=subprocess.STDOUT, timeout=10,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        ).decode("utf-8", errors="replace")
         match = re.search(r"(\d+\.\d+\.\d+\.\d+)", output)
         return match.group(1) if match else "无法识别版本"
     except Exception as e:
@@ -28,9 +34,11 @@ def save_config():
     if not path or not os.path.exists(path):
         messagebox.showerror("错误", "请指定有效的 chrome.exe 路径")
         return
-    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-        f.write(f"CHROME_BROWSER_PATH = r\"{path}\"\n")
-    messagebox.showinfo("完成", f"配置已保存至 {CONFIG_PATH}，请在脚本中引用。")
+    lines = CONFIG_PATH.read_text(encoding="utf-8").splitlines() if CONFIG_PATH.exists() else []
+    lines = [line for line in lines if line.partition("=")[0].strip() != "CHROME_BROWSER_PATH"]
+    lines.append("CHROME_BROWSER_PATH = " + json.dumps(path, ensure_ascii=False))
+    CONFIG_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    messagebox.showinfo("完成", f"配置已保存至 {CONFIG_PATH}，主脚本启动时自动读取。")
 
 def open_chromedriver_download():
     import webbrowser

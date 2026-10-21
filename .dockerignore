@@ -1,0 +1,10 @@
+*
+!deploy/
+!deploy/Dockerfile
+!deploy/requirements.txt
+!deploy/entrypoint.sh
+!web/
+!web/*.py
+!tools/
+!tools/*.py
+!README.md
